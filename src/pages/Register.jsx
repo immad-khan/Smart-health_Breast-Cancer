@@ -13,6 +13,8 @@ export default function Register() {
   const [agreed, setAgreed] = useState(false);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otp, setOtp] = useState('');
 
   const update = (field, val) => setForm(f => ({ ...f, [field]: val }));
 
@@ -21,7 +23,19 @@ export default function Register() {
     if (!form.firstName) errs.firstName = 'First name is required.';
     if (!form.lastName) errs.lastName = 'Last name is required.';
     if (!form.email || !/\S+@\S+\.\S+/.test(form.email)) errs.email = 'Valid email is required.';
-    if (!form.password || form.password.length < 8) errs.password = 'Password must be at least 8 characters.';
+    if (!form.dob) errs.dob = 'Date of birth is required.';
+    if (!form.phone) errs.phone = 'Phone number is required.';
+    
+    if (!form.password) {
+      errs.password = 'Password is required.';
+    } else {
+      if (form.password.length < 10) errs.password = 'Password must be at least 10 characters.';
+      else if (!/[A-Z]/.test(form.password)) errs.password = 'Must contain at least 1 uppercase letter.';
+      else if (!/[a-z]/.test(form.password)) errs.password = 'Must contain at least 1 lowercase letter.';
+      else if (!/[0-9]/.test(form.password)) errs.password = 'Must contain at least 1 number.';
+      else if (!/[!@#$%^&*(),.?":{}|<>]/.test(form.password)) errs.password = 'Must contain at least 1 special character.';
+    }
+
     if (form.password !== form.confirmPassword) errs.confirmPassword = 'Passwords do not match.';
     if (!agreed) errs.terms = 'You must agree to the terms.';
     if (role === 'doctor') {
@@ -31,16 +45,56 @@ export default function Register() {
     return errs;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (otpSent) {
+      setLoading(true);
+      try {
+        const response = await fetch('http://localhost:8000/api/auth/verify-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: form.email, otp })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || 'Verification failed');
+        
+        setLoading(false);
+        navigate(role === 'doctor' ? '/doctor-dashboard' : '/patient-dashboard');
+      } catch (error) {
+        setLoading(false);
+        setErrors({ ...errors, terms: error.message });
+      }
+      return;
+    }
+
     const errs = validate();
     setErrors(errs);
     if (Object.keys(errs).length === 0) {
       setLoading(true);
-      setTimeout(() => {
+      try {
+        const response = await fetch('http://localhost:8000/api/auth/send-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...form,
+            role
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.detail || 'Registration failed');
+        }
+        
         setLoading(false);
-        navigate(role === 'doctor' ? '/doctor-dashboard' : '/patient-dashboard');
-      }, 1200);
+        setOtpSent(true);
+        setErrors({});
+      } catch (error) {
+        setLoading(false);
+        setErrors({ ...errs, terms: error.message });
+      }
     }
   };
 
@@ -122,7 +176,52 @@ export default function Register() {
             ))}
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          {otpSent ? (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="bg-white rounded-xl p-8 border border-[#bec8d2]/30 shadow-sm text-center">
+                <div className="w-16 h-16 bg-[#e0f2fe] rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="material-symbols-outlined text-[#006591] text-3xl">mark_email_read</span>
+                </div>
+                <h3 className="text-xl font-bold text-[#171c20] mb-2" style={{ fontFamily: 'Manrope, sans-serif' }}>Verify Your Email</h3>
+                <p className="text-sm text-[#3e4850] mb-6">We've sent a 6-digit verification code to <strong>{form.email}</strong>.</p>
+                
+                <div className="text-left mb-6">
+                  <label className="block text-sm font-medium text-[#171c20] mb-1.5">Verification Code *</label>
+                  <input 
+                    type="text" 
+                    value={otp} 
+                    onChange={e => setOtp(e.target.value)} 
+                    placeholder="Enter 6-digit code" 
+                    className={inputClass('otp') + " text-center tracking-widest text-xl font-bold py-4"} 
+                    maxLength={6}
+                  />
+                  {errors.terms && <p className="text-[#ba1a1a] text-xs mt-2 text-center">{errors.terms}</p>}
+                </div>
+                
+                <button
+                  type="submit"
+                  disabled={loading || otp.length < 6}
+                  className="w-full bg-[#006591] text-white font-bold py-3.5 rounded-xl hover:bg-[#005070] transition-colors flex items-center justify-center gap-2 disabled:opacity-60 text-base"
+                >
+                  {loading ? (
+                    <>
+                      <span className="material-symbols-outlined animate-spin text-xl">progress_activity</span>
+                      Verifying...
+                    </>
+                  ) : (
+                    <>
+                      Verify & Create Account
+                      <span className="material-symbols-outlined text-xl">check_circle</span>
+                    </>
+                  )}
+                </button>
+                <button type="button" onClick={() => setOtpSent(false)} className="mt-4 text-sm text-[#006591] hover:underline block w-full text-center">
+                  Change email address
+                </button>
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-6">
             {/* Personal info grid */}
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -136,12 +235,14 @@ export default function Register() {
                 {errors.lastName && <p className="text-[#ba1a1a] text-xs mt-1">{errors.lastName}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#171c20] mb-1.5">Date of Birth</label>
+                <label className="block text-sm font-medium text-[#171c20] mb-1.5">Date of Birth *</label>
                 <input type="date" value={form.dob} onChange={e => update('dob', e.target.value)} className={inputClass('dob')} />
+                {errors.dob && <p className="text-[#ba1a1a] text-xs mt-1">{errors.dob}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#171c20] mb-1.5">Phone Number</label>
+                <label className="block text-sm font-medium text-[#171c20] mb-1.5">Phone Number *</label>
                 <input type="tel" value={form.phone} onChange={e => update('phone', e.target.value)} placeholder="+1 (555) 000-0000" className={inputClass('phone')} />
+                {errors.phone && <p className="text-[#ba1a1a] text-xs mt-1">{errors.phone}</p>}
               </div>
               <div className="col-span-2">
                 <label className="block text-sm font-medium text-[#171c20] mb-1.5">Email Address *</label>
@@ -159,7 +260,7 @@ export default function Register() {
                 {errors.confirmPassword && <p className="text-[#ba1a1a] text-xs mt-1">{errors.confirmPassword}</p>}
               </div>
             </div>
-            <p className="text-xs text-[#3e4850] -mt-4">Must be at least 8 characters with a mix of letters and numbers.</p>
+            <p className="text-xs text-[#3e4850] -mt-4">Must be at least 10 characters with an uppercase, lowercase, number, and special character.</p>
 
             {/* Doctor fields */}
             {role === 'doctor' && (
@@ -218,6 +319,7 @@ export default function Register() {
               )}
             </button>
           </form>
+          )}
 
           <p className="text-center text-sm text-[#3e4850] mt-6">
             Already have an account?{' '}
