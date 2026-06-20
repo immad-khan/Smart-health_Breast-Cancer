@@ -52,6 +52,17 @@ def read_root():
 @app.post("/api/auth/send-otp")
 def send_registration_otp(req: RegisterRequest):
     try:
+        # Check if user already exists
+        conn = psycopg2.connect(DATABASE_URL)
+        cur = conn.cursor()
+        cur.execute("SELECT 1 FROM public.users WHERE email = %s", (req.email,))
+        existing_user = cur.fetchone()
+        cur.close()
+        conn.close()
+        
+        if existing_user:
+            raise Exception("User already registered")
+
         # Generate 6-digit OTP
         otp = str(random.randint(100000, 999999))
         
