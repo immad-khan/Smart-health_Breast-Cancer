@@ -12,7 +12,7 @@ import random
 import time
 
 root_env_path = Path(__file__).parent.parent / '.env'
-load_dotenv(dotenv_path=root_env_path)
+load_dotenv(dotenv_path=root_env_path, override=True)
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 app = FastAPI(title="Smart Health Care API")
@@ -238,3 +238,5 @@ def test_email(to_email: str):
             return {"error": "Failed to send email"}, 500
     except Exception as e:
         return {"error": str(e)}, 500
+
+# Force reload

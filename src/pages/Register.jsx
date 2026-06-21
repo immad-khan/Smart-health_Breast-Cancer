@@ -53,7 +53,7 @@ export default function Register() {
     if (otpSent) {
       setLoading(true);
       try {
-        const response = await fetch('http://localhost:8001/api/auth/verify-otp', {
+        const response = await fetch('http://localhost:8002/api/auth/verify-otp', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: form.email, otp })
@@ -78,7 +78,7 @@ export default function Register() {
     if (Object.keys(errs).length === 0) {
       setLoading(true);
       try {
-        const response = await fetch('http://localhost:8001/api/auth/send-otp', {
+        const response = await fetch('http://localhost:8002/api/auth/send-otp', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

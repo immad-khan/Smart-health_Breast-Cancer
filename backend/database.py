@@ -5,7 +5,7 @@ from pathlib import Path
 
 # Load environment variables from the root .env file
 root_env_path = Path(__file__).parent.parent / '.env'
-load_dotenv(dotenv_path=root_env_path)
+load_dotenv(dotenv_path=root_env_path, override=True)
 
 # Try reading backend specific vars, fallback to frontend vars if not defined
 url: str = os.environ.get("SUPABASE_URL") or os.environ.get("VITE_SUPABASE_URL")
