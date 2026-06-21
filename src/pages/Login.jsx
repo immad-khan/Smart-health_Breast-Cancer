@@ -1,16 +1,17 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
   const navigate = useNavigate();
+  const { loginUser } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [viewAs, setViewAs] = useState('patient');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email || !password) {
       setError('Please fill in all fields.');
@@ -18,14 +19,32 @@ export default function Login() {
     }
     setLoading(true);
     setError('');
-    setTimeout(() => {
-      setLoading(false);
-      if (viewAs === 'doctor') {
+
+    try {
+      const response = await fetch('http://localhost:8001/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.detail || 'Login failed');
+      }
+
+      loginUser(data.user, data.access_token);
+      
+      if (data.user.role === 'doctor') {
         navigate('/doctor-dashboard');
       } else {
         navigate('/patient-dashboard');
       }
-    }, 1000);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -97,24 +116,7 @@ export default function Login() {
           </button>
         </form>
 
-        {/* Role toggle demo */}
-        <div className="mt-6 p-3 bg-[#f0f4fa] rounded-xl">
-          <p className="text-xs text-[#3e4850] text-center mb-2 font-medium">Demo: View as</p>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setViewAs('patient')}
-              className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${viewAs === 'patient' ? 'bg-[#006591] text-white' : 'bg-white border border-[#bec8d2] text-[#3e4850]'}`}
-            >
-              Patient
-            </button>
-            <button
-              onClick={() => setViewAs('doctor')}
-              className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${viewAs === 'doctor' ? 'bg-[#006591] text-white' : 'bg-white border border-[#bec8d2] text-[#3e4850]'}`}
-            >
-              Doctor
-            </button>
-          </div>
-        </div>
+        {/* Removed Role toggle demo since we use real backend auth now */}
 
         <p className="text-center text-sm text-[#3e4850] mt-6">
           Don't have an account?{' '}

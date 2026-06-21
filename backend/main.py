@@ -42,6 +42,10 @@ class OTPVerifyRequest(BaseModel):
     email: EmailStr
     otp: str
 
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
 # In-memory store for OTPs (For production, use Redis or a DB table)
 pending_registrations = {}
 
@@ -167,8 +171,46 @@ def verify_otp_and_register(req: OTPVerifyRequest):
             body=email_body
         )
         
-        return {"message": "User registered successfully", "user_id": user_id}
+        user_data = {
+            "user_id": user_id,
+            "full_name": full_name,
+            "email": user_req.email,
+            "role": user_req.role,
+            "phone": user_req.phone
+        }
         
+        return {"message": "User registered successfully", "user_id": user_id, "user": user_data}
+        
+    except Exception as e:
+        print(traceback.format_exc())
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/api/auth/login")
+def login(req: LoginRequest):
+    try:
+        # Sign in with Supabase Auth
+        auth_response = supabase.auth.sign_in_with_password({
+            "email": req.email,
+            "password": req.password
+        })
+        
+        if not auth_response.user:
+            raise Exception("Invalid credentials")
+            
+        user_id = auth_response.user.id
+        
+        # Fetch user details from public.users
+        response = supabase.table("users").select("*").eq("user_id", user_id).execute()
+        if not response.data:
+            raise Exception("User profile not found")
+            
+        user_data = response.data[0]
+        
+        return {
+            "message": "Login successful", 
+            "user": user_data, 
+            "access_token": auth_response.session.access_token
+        }
     except Exception as e:
         print(traceback.format_exc())
         raise HTTPException(status_code=400, detail=str(e))

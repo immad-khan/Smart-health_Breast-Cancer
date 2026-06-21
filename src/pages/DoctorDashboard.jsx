@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { mockDoctorUser, mockPendingConsultations, mockConsultations } from '../data/mockData';
+import { useAuth } from '../context/AuthContext';
+import { mockPendingConsultations, mockConsultations } from '../data/mockData';
 
 const riskColors = {
   High: 'bg-[#ffdad6] text-[#ba1a1a]',
@@ -36,7 +37,8 @@ const schedule = [
 
 export default function DoctorDashboard() {
   const navigate = useNavigate();
-  const [isAvailable, setIsAvailable] = useState(mockDoctorUser.is_available);
+  const { user } = useAuth();
+  const [isAvailable, setIsAvailable] = useState(true);
   const [connecting, setConnecting] = useState(null);
   const [declined, setDeclined] = useState([]);
   const [closedOpen, setClosedOpen] = useState(false);
@@ -62,7 +64,7 @@ export default function DoctorDashboard() {
         <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
           <div>
             <h1 className="text-3xl font-bold text-[#171c20]" style={{ fontFamily: 'Manrope, sans-serif' }}>
-              Good morning, {mockDoctorUser.full_name}
+              Good day, Dr. {user?.full_name?.split(' ')[1] || user?.full_name || 'Doctor'}
             </h1>
             <p className="text-[#3e4850] text-sm mt-1">Here is your clinical overview for today, {today}.</p>
           </div>

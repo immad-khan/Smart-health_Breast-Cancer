@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const specializations = ['Breast Oncologist', 'Radiologist', 'Genetic Counselor', 'General Practice', 'Oncology'];
 
 export default function Register() {
   const navigate = useNavigate();
+  const { loginUser } = useAuth();
   const [role, setRole] = useState('patient');
   const [form, setForm] = useState({
     firstName: '', lastName: '', dob: '', email: '', phone: '', password: '', confirmPassword: '',
@@ -60,6 +62,9 @@ export default function Register() {
         if (!response.ok) throw new Error(data.detail || 'Verification failed');
         
         setLoading(false);
+        // data.user will contain the user data returned from the API
+        loginUser(data.user, null); // We don't get a session token on register yet, just logging them in with data
+
         navigate(role === 'doctor' ? '/doctor-dashboard' : '/patient-dashboard');
       } catch (error) {
         setLoading(false);

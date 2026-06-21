@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import Layout from '../components/Layout';
-import { useAuth } from '../context/MockAuthContext';
+import { useAuth } from '../context/AuthContext';
 import { mockUser } from '../data/mockData';
 
 const TABS = [

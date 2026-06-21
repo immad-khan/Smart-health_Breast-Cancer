@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { mockMessages, mockRiskAssessment, mockDoctorUser } from '../data/mockData';
-import { useAuth } from '../context/MockAuthContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function ConsultationChat() {
   const { user, role } = useAuth();

@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { MockAuthProvider } from './context/MockAuthContext';
+import { AuthProvider } from './context/AuthContext';
 
 import Landing from './pages/Landing';
 import Login from './pages/Login';
@@ -19,7 +19,7 @@ import Settings from './pages/Settings';
 
 export default function App() {
   return (
-    <MockAuthProvider>
+    <AuthProvider>
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Landing />} />
@@ -40,6 +40,6 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </BrowserRouter>
-    </MockAuthProvider>
+    </AuthProvider>
   );
 }

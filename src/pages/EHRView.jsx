@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import Layout from '../components/Layout';
 import { mockSymptoms, mockImages, mockDocuments, mockRiskAssessment, mockFamilyHistory, mockConsultations } from '../data/mockData';
-import { useAuth } from '../context/MockAuthContext';
+import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 
 const TABS = ['Symptoms', 'Images', 'Documents', 'Risk History', 'Family History', 'Consultations'];
