@@ -25,11 +25,6 @@ const quickActions = [
   { label: 'Start Chat', to: '/consultation-chat/c-001', icon: 'chat', bg: 'bg-[#bee9ff]/50' },
 ];
 
-const recentActivity = [
-  { icon: 'radiology', text: 'Mammogram uploaded and analyzed', date: 'Mar 11, 2024', color: 'text-[#006591]' },
-  { icon: 'analytics', text: 'Risk assessment generated — Moderate', date: 'Mar 14, 2024', color: 'text-[#de8712]' },
-  { icon: 'chat', text: 'Consultation with Dr. Sarah Ahmed', date: 'Mar 14, 2024', color: 'text-[#396477]' },
-];
 
 export default function PatientDashboard() {
   const { user } = useAuth();
@@ -114,10 +109,9 @@ export default function PatientDashboard() {
               <h2 className="text-lg font-bold text-[#171c20]" style={{ fontFamily: 'Manrope, sans-serif' }}>Recent Health Activity</h2>
               <Link to="/ehr" className="text-[#006591] text-sm font-semibold hover:underline">View All</Link>
             </div>
-              <div className="p-8 text-center text-[#3e4850] bg-white rounded-2xl border border-[#bec8d2]/30 shadow-sm">
-                <span className="material-symbols-outlined text-4xl mb-2 text-[#bec8d2]">history</span>
-                <p>No recent activity yet.</p>
-              </div>
+            <div className="p-8 text-center text-[#3e4850] bg-white rounded-2xl border border-[#bec8d2]/30 shadow-sm">
+              <span className="material-symbols-outlined text-4xl mb-2 text-[#bec8d2]">history</span>
+              <p>No recent activity yet.</p>
             </div>
           </div>
         </div>

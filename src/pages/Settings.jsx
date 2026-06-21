@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
-import { mockUser } from '../data/mockData';
 
 const TABS = [
   { label: 'Profile', icon: 'person' },
@@ -23,11 +22,12 @@ function Toggle({ checked, onChange }) {
 
 export default function Settings() {
   const { user, role, logout } = useAuth();
+  const nameParts = user?.full_name?.split(' ') || ['', ''];
   const [activeTab, setActiveTab] = useState(0);
   const [form, setForm] = useState({
-    firstName: 'Jane', lastName: 'Doe', email: mockUser.email,
-    dob: '1990-01-15', bloodType: 'O+', phone: '+1 555 000 0000', address: '123 Health St, New York, NY',
-    specialty: 'Breast Oncologist', qualification: 'MD, FRCS', hospital: 'City Medical Center', city: 'New York',
+    firstName: nameParts[0] || '', lastName: nameParts.slice(1).join(' ') || '', email: user?.email || '',
+    dob: user?.dob || '', bloodType: user?.blood_type || 'O+', phone: user?.phone || '', address: user?.address || '',
+    specialty: user?.specialty || '', qualification: user?.qualification || '', hospital: user?.hospital || '', city: user?.city || '',
   });
   const [saved, setSaved] = useState(false);
 
@@ -103,7 +103,7 @@ export default function Settings() {
                   <div className="flex items-center gap-5 mb-6">
                     <div className="relative group cursor-pointer">
                       <div className="w-20 h-20 rounded-full bg-[#0ea5e9]/20 border-2 border-[#bec8d2] flex items-center justify-center text-[#006591] font-bold text-2xl overflow-hidden">
-                        JD
+                        {user?.full_name ? user.full_name.split(' ').map(n => n[0]).join('').slice(0,2) : '??'}
                       </div>
                       <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                         <span className="material-symbols-outlined text-white text-xl">photo_camera</span>

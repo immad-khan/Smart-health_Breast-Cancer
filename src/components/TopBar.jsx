@@ -49,7 +49,7 @@ export default function TopBar({ onMenuToggle }) {
         </button>
         <Link to="/settings">
           <div className="w-9 h-9 rounded-full bg-[#0ea5e9]/20 flex items-center justify-center text-[#006591] font-bold text-sm cursor-pointer hover:bg-[#0ea5e9]/30 transition-colors">
-            {user ? user.full_name.split(' ').map(n => n[0]).join('').slice(0,2) : 'JD'}
+            {user?.full_name ? user.full_name.split(' ').map(n => n[0]).join('').slice(0,2) : '??'}
           </div>
         </Link>
       </div>
