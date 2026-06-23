@@ -10,6 +10,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 import random
 import time
+import json
+from groq import Groq
 
 root_env_path = Path(__file__).parent.parent / '.env'
 load_dotenv(dotenv_path=root_env_path, override=True)
@@ -204,7 +206,120 @@ def login(req: LoginRequest):
         print(traceback.format_exc())
         raise HTTPException(status_code=400, detail=str(e))
 
+# Pydantic models for symptom analysis and risk assessment
+class SymptomAnalysisRequest(BaseModel):
+    text: str
+
+class RiskAssessmentRequest(BaseModel):
+    symptoms: list[str]
+    family_history: list[dict] = []
+    image_findings: str = ""
+
+# Groq Client Initialization
+groq_key = os.environ.get("GROQ_API_KEY")
+groq_client = Groq(api_key=groq_key) if groq_key else None
+
+@app.post("/api/analyze-symptoms")
+def analyze_symptoms(req: SymptomAnalysisRequest):
+    if not groq_client:
+        raise HTTPException(status_code=500, detail="Groq API key not configured")
+    try:
+        prompt = f"""
+        You are a clinical AI assistant specializing in breast health.
+        Your task is to analyze the patient's description of their symptoms and extract a list of specific, distinct clinical symptoms.
+        
+        Patient description: "{req.text}"
+        
+        Return the output as a JSON object containing a list of strings called "extracted_symptoms".
+        Format example:
+        {{
+          "extracted_symptoms": ["Breast pain", "Lump detection", "Nipple discharge"]
+        }}
+        
+        Do not include any conversational text, markdown formatting (such as ```json) or explanations. Just return raw JSON.
+        """
+        chat_completion = groq_client.chat.completions.create(
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a medical assistant that only responds in raw JSON format matching the requested schema."
+                },
+                {
+                    "role": "user",
+                    "content": prompt,
+                }
+            ],
+            model="llama-3.3-70b-versatile",
+            temperature=0,
+            response_format={"type": "json_object"}
+        )
+        response_content = chat_completion.choices[0].message.content
+        data = json.loads(response_content)
+        return data
+    except Exception as e:
+        print(traceback.format_exc())
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/api/generate-risk-assessment")
+def generate_risk_assessment(req: RiskAssessmentRequest):
+    if not groq_client:
+        raise HTTPException(status_code=500, detail="Groq API key not configured")
+    try:
+        prompt = f"""
+        You are a clinical AI breast health risk assessment engine.
+        Analyze the patient's profile below and calculate their breast health risk.
+        
+        Patient Data:
+        - Symptoms reported: {req.symptoms}
+        - Family History of relevant conditions: {req.family_history}
+        - Imaging findings: {req.image_findings}
+        
+        Calculate:
+        1. Generational Risk Score: a float value between 0.00 and 1.00 indicating likelihood of breast health risks.
+        2. Risk Level: "Low", "Moderate", or "High" depending on score:
+           - Low: score < 0.35
+           - Moderate: 0.35 <= score < 0.70
+           - High: score >= 0.70
+        3. Contributing Factors: A list of specific clinical reasons based on the patient's data (e.g. family lineage conditions, symptoms, imaging results).
+        4. Recommended Action: A short clinical recommendation summary of what the patient should do next (e.g., consult oncologist, schedule ultrasound/mammogram, etc.).
+        
+        Return the output strictly as a JSON object with this exact structure:
+        {{
+          "risk_level": "Low" | "Moderate" | "High",
+          "generational_risk_score": 0.42,
+          "contributing_factors": [
+            "Factor 1",
+            "Factor 2"
+          ],
+          "recommended_action": "Recommendation text..."
+        }}
+        
+        Do not include any conversational text, explanations, or markdown formatting. Return raw JSON only.
+        """
+        chat_completion = groq_client.chat.completions.create(
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a breast health risk assessment engine that only responds in raw JSON format matching the requested schema."
+                },
+                {
+                    "role": "user",
+                    "content": prompt,
+                }
+            ],
+            model="llama-3.3-70b-versatile",
+            temperature=0.1,
+            response_format={"type": "json_object"}
+        )
+        response_content = chat_completion.choices[0].message.content
+        data = json.loads(response_content)
+        return data
+    except Exception as e:
+        print(traceback.format_exc())
+        raise HTTPException(status_code=400, detail=str(e))
+
 @app.get("/health")
+
 def health_check():
     try:
         response = supabase_admin.table("users").select("*").limit(1).execute()
