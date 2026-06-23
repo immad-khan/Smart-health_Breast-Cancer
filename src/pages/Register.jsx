@@ -27,7 +27,7 @@ export default function Register() {
     if (!form.email || !/\S+@\S+\.\S+/.test(form.email)) errs.email = 'Valid email is required.';
     if (!form.dob) errs.dob = 'Date of birth is required.';
     if (!form.phone) errs.phone = 'Phone number is required.';
-    
+
     if (!form.password) {
       errs.password = 'Password is required.';
     } else {
@@ -49,7 +49,7 @@ export default function Register() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (otpSent) {
       setLoading(true);
       try {
@@ -60,7 +60,7 @@ export default function Register() {
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.detail || 'Verification failed');
-        
+
         setLoading(false);
         // data.user will contain the user data returned from the API
         loginUser(data.user, null); // We don't get a session token on register yet, just logging them in with data
@@ -86,13 +86,13 @@ export default function Register() {
             role
           })
         });
-        
+
         const data = await response.json();
-        
+
         if (!response.ok) {
           throw new Error(data.detail || 'Registration failed');
         }
-        
+
         setLoading(false);
         setOtpSent(true);
         setErrors({});
@@ -104,8 +104,7 @@ export default function Register() {
   };
 
   const inputClass = (field) =>
-    `w-full px-4 py-3 bg-[#f0f4fa] border rounded-lg text-sm text-[#171c20] placeholder-[#3e4850]/50 focus:outline-none transition-colors ${
-      errors[field] ? 'border-[#ba1a1a]' : 'border-[#bec8d2]/60 focus:border-[#006591]'
+    `w-full px-4 py-3 bg-[#f0f4fa] border rounded-lg text-sm text-[#171c20] placeholder-[#3e4850]/50 focus:outline-none transition-colors ${errors[field] ? 'border-[#ba1a1a]' : 'border-[#bec8d2]/60 focus:border-[#006591]'
     }`;
 
   return (
@@ -159,11 +158,10 @@ export default function Register() {
                 key={r.val}
                 type="button"
                 onClick={() => setRole(r.val)}
-                className={`flex-1 flex items-start gap-3 p-4 rounded-xl border-2 transition-all text-left ${
-                  role === r.val
+                className={`flex-1 flex items-start gap-3 p-4 rounded-xl border-2 transition-all text-left ${role === r.val
                     ? 'border-[#006591] bg-white shadow-md'
                     : 'border-[#bec8d2]/50 bg-[#f0f4fa] hover:border-[#006591]/40'
-                }`}
+                  }`}
               >
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${role === r.val ? 'bg-[#006591]' : 'bg-[#bec8d2]/40'}`}>
                   <span className={`material-symbols-outlined text-xl ${role === r.val ? 'text-white' : 'text-[#3e4850]'}`}>{r.icon}</span>
@@ -189,20 +187,20 @@ export default function Register() {
                 </div>
                 <h3 className="text-xl font-bold text-[#171c20] mb-2" style={{ fontFamily: 'Manrope, sans-serif' }}>Verify Your Email</h3>
                 <p className="text-sm text-[#3e4850] mb-6">We've sent a 6-digit verification code to <strong>{form.email}</strong>.</p>
-                
+
                 <div className="text-left mb-6">
                   <label className="block text-sm font-medium text-[#171c20] mb-1.5">Verification Code *</label>
-                  <input 
-                    type="text" 
-                    value={otp} 
-                    onChange={e => setOtp(e.target.value)} 
-                    placeholder="Enter 6-digit code" 
-                    className={inputClass('otp') + " text-center tracking-widest text-xl font-bold py-4"} 
+                  <input
+                    type="text"
+                    value={otp}
+                    onChange={e => setOtp(e.target.value)}
+                    placeholder="Enter 6-digit code"
+                    className={inputClass('otp') + " text-center tracking-widest text-xl font-bold py-4"}
                     maxLength={6}
                   />
                   {errors.terms && <p className="text-[#ba1a1a] text-xs mt-2 text-center">{errors.terms}</p>}
                 </div>
-                
+
                 <button
                   type="submit"
                   disabled={loading || otp.length < 6}
@@ -227,103 +225,103 @@ export default function Register() {
             </form>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Personal info grid */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-[#171c20] mb-1.5">First Name *</label>
-                <input type="text" value={form.firstName} onChange={e => update('firstName', e.target.value)} placeholder="Jane" className={inputClass('firstName')} />
-                {errors.firstName && <p className="text-[#ba1a1a] text-xs mt-1">{errors.firstName}</p>}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-[#171c20] mb-1.5">Last Name *</label>
-                <input type="text" value={form.lastName} onChange={e => update('lastName', e.target.value)} placeholder="Doe" className={inputClass('lastName')} />
-                {errors.lastName && <p className="text-[#ba1a1a] text-xs mt-1">{errors.lastName}</p>}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-[#171c20] mb-1.5">Date of Birth *</label>
-                <input type="date" value={form.dob} onChange={e => update('dob', e.target.value)} className={inputClass('dob')} />
-                {errors.dob && <p className="text-[#ba1a1a] text-xs mt-1">{errors.dob}</p>}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-[#171c20] mb-1.5">Phone Number *</label>
-                <input type="tel" value={form.phone} onChange={e => update('phone', e.target.value)} placeholder="+1 (555) 000-0000" className={inputClass('phone')} />
-                {errors.phone && <p className="text-[#ba1a1a] text-xs mt-1">{errors.phone}</p>}
-              </div>
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-[#171c20] mb-1.5">Email Address *</label>
-                <input type="email" value={form.email} onChange={e => update('email', e.target.value)} placeholder="jane.doe@example.com" className={inputClass('email')} />
-                {errors.email && <p className="text-[#ba1a1a] text-xs mt-1">{errors.email}</p>}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-[#171c20] mb-1.5">Password *</label>
-                <input type="password" value={form.password} onChange={e => update('password', e.target.value)} placeholder="Min. 8 characters" className={inputClass('password')} />
-                {errors.password && <p className="text-[#ba1a1a] text-xs mt-1">{errors.password}</p>}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-[#171c20] mb-1.5">Confirm Password *</label>
-                <input type="password" value={form.confirmPassword} onChange={e => update('confirmPassword', e.target.value)} placeholder="Repeat password" className={inputClass('confirmPassword')} />
-                {errors.confirmPassword && <p className="text-[#ba1a1a] text-xs mt-1">{errors.confirmPassword}</p>}
-              </div>
-            </div>
-            <p className="text-xs text-[#3e4850] -mt-4">Must be at least 10 characters with an uppercase, lowercase, number, and special character.</p>
-
-            {/* Doctor fields */}
-            {role === 'doctor' && (
-              <div className="bg-white rounded-xl p-5 border border-[#bec8d2]/30 space-y-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="material-symbols-outlined text-[#006591]">badge</span>
-                  <h3 className="font-bold text-[#171c20] text-sm" style={{ fontFamily: 'Manrope, sans-serif' }}>Professional Credentials</h3>
+              {/* Personal info grid */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-[#171c20] mb-1.5">First Name *</label>
+                  <input type="text" value={form.firstName} onChange={e => update('firstName', e.target.value)} placeholder="Jane" className={inputClass('firstName')} />
+                  {errors.firstName && <p className="text-[#ba1a1a] text-xs mt-1">{errors.firstName}</p>}
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-[#171c20] mb-1.5">Medical License Number *</label>
-                    <input type="text" value={form.licenseNumber} onChange={e => update('licenseNumber', e.target.value)} placeholder="ML-XXXXXXX" className={inputClass('licenseNumber')} />
-                    {errors.licenseNumber && <p className="text-[#ba1a1a] text-xs mt-1">{errors.licenseNumber}</p>}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-[#171c20] mb-1.5">Specialization *</label>
-                    <select value={form.specialization} onChange={e => update('specialization', e.target.value)} className={inputClass('specialization')}>
-                      <option value="">Select specialization</option>
-                      {specializations.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                    {errors.specialization && <p className="text-[#ba1a1a] text-xs mt-1">{errors.specialization}</p>}
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#171c20] mb-1.5">Last Name *</label>
+                  <input type="text" value={form.lastName} onChange={e => update('lastName', e.target.value)} placeholder="Doe" className={inputClass('lastName')} />
+                  {errors.lastName && <p className="text-[#ba1a1a] text-xs mt-1">{errors.lastName}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#171c20] mb-1.5">Date of Birth *</label>
+                  <input type="date" value={form.dob} onChange={e => update('dob', e.target.value)} className={inputClass('dob')} />
+                  {errors.dob && <p className="text-[#ba1a1a] text-xs mt-1">{errors.dob}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#171c20] mb-1.5">Phone Number *</label>
+                  <input type="tel" value={form.phone} onChange={e => update('phone', e.target.value)} placeholder="+1 (555) 000-0000" className={inputClass('phone')} />
+                  {errors.phone && <p className="text-[#ba1a1a] text-xs mt-1">{errors.phone}</p>}
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-[#171c20] mb-1.5">Email Address *</label>
+                  <input type="email" value={form.email} onChange={e => update('email', e.target.value)} placeholder="jane.doe@example.com" className={inputClass('email')} />
+                  {errors.email && <p className="text-[#ba1a1a] text-xs mt-1">{errors.email}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#171c20] mb-1.5">Password *</label>
+                  <input type="password" value={form.password} onChange={e => update('password', e.target.value)} placeholder="Min. 8 characters" className={inputClass('password')} />
+                  {errors.password && <p className="text-[#ba1a1a] text-xs mt-1">{errors.password}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#171c20] mb-1.5">Confirm Password *</label>
+                  <input type="password" value={form.confirmPassword} onChange={e => update('confirmPassword', e.target.value)} placeholder="Repeat password" className={inputClass('confirmPassword')} />
+                  {errors.confirmPassword && <p className="text-[#ba1a1a] text-xs mt-1">{errors.confirmPassword}</p>}
                 </div>
               </div>
-            )}
+              <p className="text-xs text-[#3e4850] -mt-4">Must be at least 10 characters with an uppercase, lowercase, number, and special character.</p>
 
-            {/* Terms */}
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={agreed}
-                onChange={e => setAgreed(e.target.checked)}
-                className="mt-0.5 w-4 h-4 accent-[#006591]"
-              />
-              <span className="text-sm text-[#3e4850]">
-                I agree to the <a href="#" className="text-[#006591] hover:underline">Terms of Service</a> and <a href="#" className="text-[#006591] hover:underline">Privacy Policy</a>, and consent to HIPAA compliant data handling.
-              </span>
-            </label>
-            {errors.terms && <p className="text-[#ba1a1a] text-xs -mt-4">{errors.terms}</p>}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-[#006591] text-white font-bold py-3.5 rounded-xl hover:bg-[#005070] transition-colors flex items-center justify-center gap-2 disabled:opacity-60 text-base"
-            >
-              {loading ? (
-                <>
-                  <span className="material-symbols-outlined animate-spin text-xl">progress_activity</span>
-                  Creating Account...
-                </>
-              ) : (
-                <>
-                  Create Account
-                  <span className="material-symbols-outlined text-xl">arrow_forward</span>
-                </>
+              {/* Doctor fields */}
+              {role === 'doctor' && (
+                <div className="bg-white rounded-xl p-5 border border-[#bec8d2]/30 space-y-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="material-symbols-outlined text-[#006591]">badge</span>
+                    <h3 className="font-bold text-[#171c20] text-sm" style={{ fontFamily: 'Manrope, sans-serif' }}>Professional Credentials</h3>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-[#171c20] mb-1.5">Medical License Number *</label>
+                      <input type="text" value={form.licenseNumber} onChange={e => update('licenseNumber', e.target.value)} placeholder="ML-XXXXXXX" className={inputClass('licenseNumber')} />
+                      {errors.licenseNumber && <p className="text-[#ba1a1a] text-xs mt-1">{errors.licenseNumber}</p>}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-[#171c20] mb-1.5">Specialization *</label>
+                      <select value={form.specialization} onChange={e => update('specialization', e.target.value)} className={inputClass('specialization')}>
+                        <option value="">Select specialization</option>
+                        {specializations.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                      {errors.specialization && <p className="text-[#ba1a1a] text-xs mt-1">{errors.specialization}</p>}
+                    </div>
+                  </div>
+                </div>
               )}
-            </button>
-          </form>
+
+              {/* Terms */}
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={agreed}
+                  onChange={e => setAgreed(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 accent-[#006591]"
+                />
+                <span className="text-sm text-[#3e4850]">
+                  I agree to the <a href="#" className="text-[#006591] hover:underline">Terms of Service</a> and <a href="#" className="text-[#006591] hover:underline">Privacy Policy</a>, and consent to HIPAA compliant data handling.
+                </span>
+              </label>
+              {errors.terms && <p className="text-[#ba1a1a] text-xs -mt-4">{errors.terms}</p>}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-[#006591] text-white font-bold py-3.5 rounded-xl hover:bg-[#005070] transition-colors flex items-center justify-center gap-2 disabled:opacity-60 text-base"
+              >
+                {loading ? (
+                  <>
+                    <span className="material-symbols-outlined animate-spin text-xl">progress_activity</span>
+                    Creating Account...
+                  </>
+                ) : (
+                  <>
+                    Create Account
+                    <span className="material-symbols-outlined text-xl">arrow_forward</span>
+                  </>
+                )}
+              </button>
+            </form>
           )}
 
           <p className="text-center text-sm text-[#3e4850] mt-6">

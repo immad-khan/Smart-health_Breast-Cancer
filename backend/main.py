@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
-from database import supabase
+from database import supabase, supabase_admin
 from email_service import send_email
 import traceback
 import psycopg2
@@ -57,15 +57,10 @@ def read_root():
 def send_registration_otp(req: RegisterRequest):
     try:
         # Check if user already exists
-        conn = psycopg2.connect(DATABASE_URL)
-        cur = conn.cursor()
-        cur.execute("SELECT 1 FROM public.users WHERE email = %s", (req.email,))
-        existing_user = cur.fetchone()
-        cur.close()
-        conn.close()
-        
-        if existing_user:
+        response = supabase_admin.table("users").select("user_id").eq("email", req.email).execute()
+        if response.data:
             raise Exception("User already registered")
+
 
         # Generate 6-digit OTP
         otp = str(random.randint(100000, 999999))
@@ -124,36 +119,30 @@ def verify_otp_and_register(req: OTPVerifyRequest):
         else:
             raise Exception("Failed to create user in Supabase Auth")
             
-        # 2. Insert into public.users using psycopg2 to bypass RLS
+        # 2. Insert into public.users using supabase_admin to bypass RLS
         full_name = f"{user_req.firstName} {user_req.lastName}"
         
-        conn = psycopg2.connect(DATABASE_URL)
-        cur = conn.cursor()
-        
-        cur.execute(
-            """
-            INSERT INTO public.users (user_id, full_name, email, role, phone)
-            VALUES (%s, %s, %s, %s, %s)
-            """,
-            (user_id, full_name, user_req.email, user_req.role, user_req.phone)
-        )
+        user_data = {
+            "user_id": user_id,
+            "full_name": full_name,
+            "email": user_req.email,
+            "role": user_req.role,
+            "phone": user_req.phone
+        }
+        supabase_admin.table("users").insert(user_data).execute()
         
         # 3. If doctor, insert into doctor_profiles
         if user_req.role == "doctor":
-            cur.execute(
-                """
-                INSERT INTO public.doctor_profiles (user_id, specialty, license_number)
-                VALUES (%s, %s, %s)
-                """,
-                (user_id, user_req.specialization, user_req.licenseNumber)
-            )
-            
-        conn.commit()
-        cur.close()
-        conn.close()
+            doc_data = {
+                "user_id": user_id,
+                "specialty": user_req.specialization,
+                "license_number": user_req.licenseNumber
+            }
+            supabase_admin.table("doctor_profiles").insert(doc_data).execute()
             
         # Clean up OTP
         del pending_registrations[req.email]
+
         
         # 4. Send Welcome Email
         email_body = f"""
@@ -218,11 +207,12 @@ def login(req: LoginRequest):
 @app.get("/health")
 def health_check():
     try:
-        response = supabase.table("users").select("*").limit(1).execute()
+        response = supabase_admin.table("users").select("*").limit(1).execute()
         db_status = "connected"
     except Exception as e:
         db_status = f"error: {str(e)}"
     return {"status": "ok", "database": db_status}
+
 
 @app.post("/test-email")
 def test_email(to_email: str):
@@ -239,4 +229,18 @@ def test_email(to_email: str):
     except Exception as e:
         return {"error": str(e)}, 500
 
+@app.get("/api/auth/debug-otp")
+def debug_otp():
+    # Return pending registrations for testing
+    # Convert RegisterRequest pydantic model to dict for JSON serialization
+    res = {}
+    for email, val in pending_registrations.items():
+        res[email] = {
+            "otp": val["otp"],
+            "timestamp": val["timestamp"],
+            "data": val["data"].dict() if hasattr(val["data"], "dict") else val["data"].model_dump()
+        }
+    return res
+
 # Force reload
+
