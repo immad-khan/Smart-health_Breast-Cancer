@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { mockSymptoms, mockImages, mockDocuments, mockRiskAssessment, mockFamilyHistory, mockConsultations } from '../data/mockData';
 import { useAuth } from '../context/AuthContext';
@@ -9,8 +9,24 @@ const TABS = ['Symptoms', 'Images', 'Documents', 'Risk History', 'Family History
 const formatRelation = (rel) => rel.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
 export default function EHRView() {
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const [activeTab, setActiveTab] = useState(0);
+  const [localSymptoms, setLocalSymptoms] = useState([]);
+  const [ocrDocs, setOcrDocs] = useState([]);
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('userSymptoms') || '[]');
+      setLocalSymptoms(saved);
+    } catch(e) {}
+
+    fetch('http://127.0.0.1:8002/ocr/documents')
+      .then(r => r.json())
+      .then(d => {
+        if (d.documents) setOcrDocs(d.documents);
+      })
+      .catch(console.error);
+  }, []);
 
   return (
     <Layout>
@@ -29,10 +45,10 @@ export default function EHRView() {
 
         {/* Patient info bar */}
         <div className="bg-white border border-[#bec8d2]/30 rounded-2xl p-4 mb-6 flex flex-wrap items-center gap-4 shadow-sm">
-          <div className="w-14 h-14 rounded-full bg-[#0ea5e9]/20 flex items-center justify-center text-[#006591] font-bold text-xl">JD</div>
+          <div className="w-14 h-14 rounded-full bg-[#0ea5e9]/20 flex items-center justify-center text-[#006591] font-bold text-xl">{user?.full_name ? user.full_name.charAt(0).toUpperCase() : 'U'}</div>
           <div>
-            <h2 className="font-bold text-[#171c20] text-lg" style={{ fontFamily: 'Manrope, sans-serif' }}>Jane Doe</h2>
-            <p className="text-sm text-[#3e4850]">DOB: 01/15/1990 (34y) · MRN: #SH-0011-001 · Female</p>
+            <h2 className="font-bold text-[#171c20] text-lg" style={{ fontFamily: 'Manrope, sans-serif' }}>{user?.full_name || 'Jane Doe'}</h2>
+            <p className="text-sm text-[#3e4850]">Email: {user?.email || 'N/A'} · Role: {user?.role || 'Patient'}</p>
           </div>
           <button className="ml-auto flex items-center gap-1.5 border border-[#006591] text-[#006591] px-4 py-2 rounded-xl text-sm font-medium hover:bg-[#006591]/10 transition-colors">
             <span className="material-symbols-outlined text-lg">edit</span>
@@ -92,7 +108,7 @@ export default function EHRView() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#bec8d2]/20">
-                {mockSymptoms.map(s => (
+                {localSymptoms.length > 0 ? localSymptoms.map(s => (
                   <tr key={s.symptom_id} className="hover:bg-[#f0f4fa]/50">
                     <td className="px-4 py-3 text-[#3e4850]">{new Date(s.created_at).toLocaleDateString()}</td>
                     <td className="px-4 py-3">
@@ -113,7 +129,13 @@ export default function EHRView() {
                       </span>
                     </td>
                   </tr>
-                ))}
+                )) : (
+                  <tr>
+                    <td colSpan="4" className="px-4 py-8 text-center text-sm text-[#3e4850] italic">
+                      No symptoms recorded yet. Visit the Symptom AI to analyze and record your symptoms.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -152,6 +174,33 @@ export default function EHRView() {
 
         {activeTab === 2 && (
           <div className="space-y-4">
+            {ocrDocs.map(doc => (
+              <div key={doc.id} className="bg-white border border-[#006591] rounded-2xl p-5 shadow-sm">
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="material-symbols-outlined text-[#006591]">description</span>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="bg-[#bae6fd] text-[#3d687c] text-xs px-2 py-0.5 rounded-full capitalize">{doc.doc_type.replace('_', ' ')}</span>
+                      <span className="font-bold text-sm text-[#006591]">{doc.filename || 'Uploaded Document'}</span>
+                      <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full">AI Digitized</span>
+                    </div>
+                    <p className="text-xs text-[#3e4850] mt-0.5">{new Date(doc.created_at).toLocaleDateString()}</p>
+                  </div>
+                </div>
+                
+                {doc.structured_data?.summary && (
+                  <div className="bg-[#f6faff] rounded-xl p-4 border border-[#bae6fd] mb-3">
+                    <p className="text-xs font-semibold text-[#006591] uppercase tracking-wide mb-1">AI Summary</p>
+                    <p className="text-sm text-[#171c20] leading-relaxed">{doc.structured_data.summary}</p>
+                  </div>
+                )}
+                
+                <div className="bg-[#f0f4fa] rounded-xl p-4 mb-3 max-h-32 overflow-y-auto">
+                  <p className="font-mono text-xs text-[#3e4850] leading-relaxed whitespace-pre-wrap">{doc.raw_text}</p>
+                </div>
+              </div>
+            ))}
+            
             {mockDocuments.map(doc => (
               <div key={doc.doc_id} className="bg-white border border-[#bec8d2]/30 rounded-2xl p-5 shadow-sm">
                 <div className="flex items-center gap-3 mb-3">
@@ -259,8 +308,8 @@ export default function EHRView() {
               {/* Patient + sibling */}
               <div className="flex justify-center gap-8">
                 <div className="bg-white border-2 border-[#006591] rounded-2xl p-3 text-center min-w-[140px] shadow-md">
-                  <div className="w-10 h-10 rounded-full bg-[#006591] flex items-center justify-center text-white font-bold text-sm mx-auto mb-1">JD</div>
-                  <p className="text-sm font-bold text-[#171c20]">Jane Doe</p>
+                  <div className="w-10 h-10 rounded-full bg-[#006591] flex items-center justify-center text-white font-bold text-sm mx-auto mb-1">{user?.full_name ? user.full_name.charAt(0).toUpperCase() : 'U'}</div>
+                  <p className="text-sm font-bold text-[#171c20]">{user?.full_name || 'Jane Doe'}</p>
                   <p className="text-xs text-[#3e4850]">PATIENT PROFILE</p>
                 </div>
                 {mockFamilyHistory.filter(f => f.member_relation === 'sibling').map(m => (

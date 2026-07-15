@@ -130,14 +130,32 @@ export default function SymptomInput() {
   };
 
   const handleAnalyze = () => {
-    if (extractedSymptoms.length === 0 && !text.trim()) {
-      setError('Please describe your symptoms and ensure at least one symptom is identified.');
+    if (error) {
+      return; // Block if there's already an error (e.g., unrelated symptoms)
+    }
+
+    if (extractedSymptoms.length === 0) {
+      setError('Please describe breast-related symptoms to proceed. If your symptoms were not automatically identified, you can add them manually using the input below.');
       return;
     }
     setError('');
+    
+    const finalSymptoms = extractedSymptoms;
+    
+    // Save to local storage for EHR View
+    const existing = JSON.parse(localStorage.getItem('userSymptoms') || '[]');
+    existing.unshift({
+      symptom_id: 's-new-' + Date.now(),
+      input_type: activeTab,
+      extracted_symptoms: finalSymptoms,
+      is_confirmed: true,
+      created_at: new Date().toISOString()
+    });
+    localStorage.setItem('userSymptoms', JSON.stringify(existing));
+
     navigate('/risk-assessment', { 
       state: { 
-        symptoms: extractedSymptoms.length > 0 ? extractedSymptoms : [text] 
+        symptoms: finalSymptoms 
       } 
     });
   };
