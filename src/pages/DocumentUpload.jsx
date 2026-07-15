@@ -363,6 +363,15 @@ export default function DocumentUpload() {
                     <div className="mb-4 flex-1">
                       {docType === 'prescription' ? (
                         <>
+                          {ocrResult.structured_data?.summary && (
+                            <div className="bg-[#f6faff] rounded-xl p-4 border border-[#bae6fd] mb-4 flex items-start gap-3">
+                              <span className="material-symbols-outlined text-[#006591] text-lg mt-0.5">summarize</span>
+                              <div>
+                                <p className="text-xs font-semibold text-[#006591] uppercase tracking-wide mb-1">AI Summary</p>
+                                <p className="text-sm text-[#171c20] leading-relaxed">{ocrResult.structured_data.summary}</p>
+                              </div>
+                            </div>
+                          )}
                           <div className="grid grid-cols-2 gap-3 mb-4">
                             {[
                               { label: 'Doctor', val: ocrResult.structured_data?.doctor_name || '—', icon: 'person' },

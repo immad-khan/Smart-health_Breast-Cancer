@@ -452,6 +452,7 @@ def _ocr_with_groq(contents: bytes, doc_type: str) -> dict:
             "You are a medical OCR system. Extract all visible text from this prescription image. "
             "Return ONLY a raw JSON object (no markdown) with these exact keys: "
             "raw_text (string, full extracted text), "
+            "summary (string, a brief easy-to-understand summary of the prescription), "
             "medications (list of objects with name, dosage, frequency, duration), "
             "doctor_name (string or null), date (string or null)."
         )
