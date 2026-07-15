@@ -70,6 +70,7 @@ export default function SymptomInput() {
   const extractSymptoms = async (queryText) => {
     if (!queryText.trim()) return;
     setIsExtracting(true);
+    setError('');
     try {
       const response = await fetch('http://localhost:8002/api/analyze-symptoms', {
         method: 'POST',
@@ -84,8 +85,13 @@ export default function SymptomInput() {
       }
 
       const data = await response.json();
-      if (data.extracted_symptoms) {
+      
+      if (data.is_breast_cancer_related === false) {
+        setError('The described symptoms do not appear to be related to breast health. Our system specializes in breast cancer risk assessment.');
+        setExtractedSymptoms([]);
+      } else if (data.extracted_symptoms) {
         setExtractedSymptoms(data.extracted_symptoms);
+        setError('');
       }
     } catch (err) {
       console.error(err);

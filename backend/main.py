@@ -56,8 +56,17 @@ class LoginRequest(BaseModel):
     email: EmailStr
     password: str
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+    otp: str
+    new_password: str
+
 # In-memory store for OTPs (For production, use Redis or a DB table)
 pending_registrations = {}
+pending_password_resets = {}
 
 @app.get("/")
 def read_root():
@@ -214,6 +223,76 @@ def login(req: LoginRequest):
         print(traceback.format_exc())
         raise HTTPException(status_code=400, detail=str(e))
 
+@app.post("/api/auth/forgot-password")
+def forgot_password(req: ForgotPasswordRequest):
+    try:
+        # Check if user exists
+        response = supabase_admin.table("users").select("user_id, full_name").eq("email", req.email).execute()
+        if not response.data:
+            raise Exception("User not found")
+        
+        user_info = response.data[0]
+        user_id = user_info["user_id"]
+        full_name = user_info["full_name"]
+        
+        # Generate 6-digit OTP
+        otp = str(random.randint(100000, 999999))
+        
+        # Store in memory
+        pending_password_resets[req.email] = {
+            "otp": otp,
+            "user_id": user_id,
+            "timestamp": time.time()
+        }
+        
+        # Send OTP email
+        email_body = f"""
+        Hello {full_name},
+        
+        Your password reset code for Smart Health Care is: {otp}
+        
+        Please enter this code to reset your password.
+        """
+        success = send_email(
+            to_email=req.email,
+            subject="Smart Health Care - Password Reset Code",
+            body=email_body
+        )
+        
+        if not success:
+            raise Exception("Failed to send reset email")
+            
+        return {"message": "Reset code sent successfully"}
+    except Exception as e:
+        print(traceback.format_exc())
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/api/auth/reset-password")
+def reset_password(req: ResetPasswordRequest):
+    try:
+        record = pending_password_resets.get(req.email)
+        if not record:
+            raise Exception("No pending password reset found for this email.")
+            
+        if record["otp"] != req.otp:
+            raise Exception("Invalid OTP.")
+            
+        user_id = record["user_id"]
+        
+        # Update password using Supabase admin
+        supabase_admin.auth.admin.update_user_by_id(
+            user_id,
+            {"password": req.new_password}
+        )
+            
+        # Clean up OTP
+        del pending_password_resets[req.email]
+        
+        return {"message": "Password reset successfully"}
+    except Exception as e:
+        print(traceback.format_exc())
+        raise HTTPException(status_code=400, detail=str(e))
+
 # Pydantic models for symptom analysis and risk assessment
 class SymptomAnalysisRequest(BaseModel):
     text: str
@@ -235,13 +314,15 @@ def analyze_symptoms(req: SymptomAnalysisRequest):
         prompt = f"""
         You are a clinical AI assistant specializing in breast health.
         Your task is to analyze the patient's description of their symptoms and extract a list of specific, distinct clinical symptoms.
+        Additionally, determine if the described symptoms are related to or could indicate breast cancer or breast health issues.
         
         Patient description: "{req.text}"
         
-        Return the output as a JSON object containing a list of strings called "extracted_symptoms".
+        Return the output as a JSON object containing a list of strings called "extracted_symptoms" and a boolean "is_breast_cancer_related".
         Format example:
         {{
-          "extracted_symptoms": ["Breast pain", "Lump detection", "Nipple discharge"]
+          "extracted_symptoms": ["Breast pain", "Lump detection", "Nipple discharge"],
+          "is_breast_cancer_related": true
         }}
         
         Do not include any conversational text, markdown formatting (such as ```json) or explanations. Just return raw JSON.

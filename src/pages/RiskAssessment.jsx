@@ -28,8 +28,8 @@ export default function RiskAssessment() {
         },
         body: JSON.stringify({
           symptoms: symptoms,
-          family_history: mockFamilyHistory,
-          image_findings: mockImages[0]?.ai_findings || ''
+          family_history: [],
+          image_findings: ''
         }),
       });
 
@@ -61,12 +61,16 @@ export default function RiskAssessment() {
   const config = riskConfig[riskLevel] || riskConfig.Moderate;
   const scorePercent = Math.round((currentAssessment.generational_risk_score || 0.5) * 100);
 
-  const hasFamilyCancer = mockFamilyHistory.some(f =>
+  // We are evaluating based purely on symptoms for now.
+  const activeFamilyHistory = [];
+  const activeImageFindings = '';
+
+  const hasFamilyCancer = activeFamilyHistory.some(f =>
     f.conditions.some(c => ['Breast Cancer', 'Ovarian Cancer', 'BRCA Gene Mutation'].includes(c))
   );
 
-  const maternalMembers = mockFamilyHistory.filter(f => f.member_relation.includes('maternal'));
-  const paternalMembers = mockFamilyHistory.filter(f => f.member_relation.includes('paternal'));
+  const maternalMembers = activeFamilyHistory.filter(f => f.member_relation.includes('maternal'));
+  const paternalMembers = activeFamilyHistory.filter(f => f.member_relation.includes('paternal'));
 
   const conicGradient = `conic-gradient(${config.color} ${scorePercent}%, #dee3e9 0)`;
 
@@ -189,7 +193,7 @@ export default function RiskAssessment() {
               <div className="w-full h-28 bg-[#dee3e9] rounded-xl flex items-center justify-center mb-3">
                 <span className="material-symbols-outlined text-[#3e4850]/40 text-3xl">radiology</span>
               </div>
-              <p className="text-xs text-[#3e4850] leading-relaxed">{mockImages[0].ai_findings}</p>
+              <p className="text-xs text-[#3e4850] leading-relaxed">{activeImageFindings || "No imaging data available."}</p>
             </div>
 
             {/* Hereditary Risk */}
