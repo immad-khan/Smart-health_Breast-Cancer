@@ -1,10 +1,14 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 import MobileBottomNav from './MobileBottomNav';
+import { useAuth } from '../context/AuthContext';
 
 export default function Layout({ children }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { logout } = useAuth();
+  const navigate = useNavigate();
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#f6faff]">
@@ -54,6 +58,20 @@ export default function Layout({ children }) {
                     <span>{link.label}</span>
                   </a>
                 ))}
+                
+                <div className="my-2 border-t border-[#bec8d2]/40"></div>
+                
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    logout();
+                    navigate('/');
+                  }}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm font-medium text-[#ba1a1a] hover:bg-[#ffdad6] text-left w-full"
+                >
+                  <span className="material-symbols-outlined text-xl">logout</span>
+                  <span>Logout</span>
+                </button>
               </nav>
             </div>
           </div>

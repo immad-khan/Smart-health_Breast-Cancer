@@ -1,6 +1,7 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
+from typing import Optional
 from database import supabase, supabase_admin
 from email_service import send_email
 import traceback
@@ -11,7 +12,14 @@ from dotenv import load_dotenv
 import random
 import time
 import json
+import base64
+import io
 from groq import Groq
+try:
+    from PIL import Image
+    PIL_AVAILABLE = True
+except ImportError:
+    PIL_AVAILABLE = False
 
 root_env_path = Path(__file__).parent.parent / '.env'
 load_dotenv(dotenv_path=root_env_path, override=True)
@@ -317,6 +325,165 @@ def generate_risk_assessment(req: RiskAssessmentRequest):
     except Exception as e:
         print(traceback.format_exc())
         raise HTTPException(status_code=400, detail=str(e))
+
+# ─────────────────────────────────────────────
+# OCR – Prescription & Lab Report Digitization
+# ─────────────────────────────────────────────
+
+class OCRResult(BaseModel):
+    document_id: Optional[str] = None
+    doc_type: str
+    raw_text: str
+    structured_data: dict
+    quality_warning: Optional[str] = None
+
+MIN_IMAGE_PIXELS = 200 * 200
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "bmp", "tiff", "tif" ,}
+
+def _validate_file(filename: str, contents: bytes) -> bool:
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext not in ALLOWED_EXTENSIONS:
+        return False
+    if PIL_AVAILABLE:
+        try:
+            Image.open(io.BytesIO(contents)).verify()
+        except Exception:
+            return False
+    return True
+
+def _quality_check(contents: bytes) -> Optional[str]:
+    if len(contents) < 2048:
+        return "Image seems too small or blank. Please upload a readable image."
+    if PIL_AVAILABLE:
+        try:
+            img = Image.open(io.BytesIO(contents))
+            w, h = img.size
+            if w * h < MIN_IMAGE_PIXELS:
+                return "Image resolution too low. Please upload a clearer image."
+        except Exception:
+            return "Unable to process image. Please upload a valid image file."
+    return None
+
+def _ocr_with_groq(contents: bytes, doc_type: str) -> dict:
+    b64 = base64.b64encode(contents).decode()
+    if doc_type == "prescription":
+        prompt = (
+            "You are a medical OCR system. Extract all visible text from this prescription image. "
+            "Return ONLY a raw JSON object (no markdown) with these exact keys: "
+            "raw_text (string, full extracted text), "
+            "medications (list of objects with name, dosage, frequency, duration), "
+            "doctor_name (string or null), date (string or null)."
+        )
+    else:
+        prompt = (
+            "You are a medical OCR system. Extract all visible text from this lab report image. "
+            "Return ONLY a raw JSON object (no markdown) with these exact keys: "
+            "raw_text (string, full extracted text), "
+            "lab_name (string or null), "
+            "tests (list of objects with test_name, value, unit, reference_range)."
+        )
+
+    completion = groq_client.chat.completions.create(
+        model="meta-llama/llama-4-scout-17b-16e-instruct",
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}},
+                ],
+            }
+        ],
+        temperature=0.0,
+        max_completion_tokens=1500,
+    )
+    raw = completion.choices[0].message.content.strip()
+    # Strip markdown fences if model adds them
+    if raw.startswith("```"):
+        lines = raw.split("\n")
+        raw = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
+    return json.loads(raw)
+
+@app.post("/ocr/upload", response_model=OCRResult)
+async def upload_ocr(
+    file: UploadFile = File(...),
+    doc_type: str = Form("prescription"),
+    patient_id: Optional[str] = Form(None),
+):
+    """OCR endpoint – accepts a prescription or lab report image and returns extracted text."""
+    if doc_type not in ("prescription", "lab_report"):
+        raise HTTPException(status_code=400, detail="doc_type must be 'prescription' or 'lab_report'")
+    if not groq_client:
+        raise HTTPException(status_code=500, detail="Groq API key not configured")
+
+    contents = await file.read()
+
+    # Step 1: validate file type / magic bytes
+    if not _validate_file(file.filename or "", contents):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid file format. Please upload a valid image (PNG, JPG, BMP, TIFF).",
+        )
+
+    # Step 2: quality pre-check (TC19)
+    quality_warning = _quality_check(contents)
+    if quality_warning and "resolution" in quality_warning.lower():
+        raise HTTPException(status_code=400, detail=quality_warning)
+
+    # Step 3: Groq vision OCR
+    try:
+        result = _ocr_with_groq(contents, doc_type)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=500, detail="OCR model returned unparseable output. Please try again.")
+    except Exception as e:
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"OCR processing failed: {str(e)}")
+
+    # Step 4: reject if extracted text is too short (TC19 fallback)
+    raw_text = result.get("raw_text", "").strip()
+    if len(raw_text) < 10:
+        raise HTTPException(
+            status_code=400,
+            detail="Image quality too low for accurate extraction. Please upload a clearer image.",
+        )
+
+    # Step 5: persist to EHR (Supabase ocr_documents table)
+    document_id = None
+    try:
+        insert_data = {
+            "patient_id": patient_id,
+            "doc_type": doc_type,
+            "raw_text": raw_text,
+            "structured_data": result,
+            "filename": file.filename,
+        }
+        db_response = supabase_admin.table("ocr_documents").insert(insert_data).execute()
+        if db_response.data:
+            document_id = str(db_response.data[0].get("id", ""))
+    except Exception as e:
+        # Storage failure is non-fatal – still return the extracted result
+        print(f"[OCR] DB storage warning: {e}")
+
+    return OCRResult(
+        document_id=document_id,
+        doc_type=doc_type,
+        raw_text=raw_text,
+        structured_data=result,
+        quality_warning=quality_warning,
+    )
+
+@app.get("/ocr/documents")
+async def list_ocr_documents(patient_id: Optional[str] = None):
+    """Retrieve digitized documents for review (TC21)."""
+    try:
+        query = supabase_admin.table("ocr_documents").select("*").order("created_at", desc=True)
+        if patient_id:
+            query = query.eq("patient_id", patient_id)
+        response = query.execute()
+        return {"documents": response.data}
+    except Exception as e:
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/health")
 

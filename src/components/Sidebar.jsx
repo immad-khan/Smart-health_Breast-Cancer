@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 const patientNavLinks = [
   { to: '/patient-dashboard', icon: 'dashboard', label: 'Dashboard' },
   { to: '/ehr', icon: 'description', label: 'Health Records' },
+  { to: '/document-upload', icon: 'document_scanner', label: 'Digitize Prescription' },
   { to: '/symptom-input', icon: 'psychology', label: 'Symptom AI' },
   { to: '/image-upload', icon: 'radiology', label: 'Radiology Lab' },
   { to: '/family-history', icon: 'family_history', label: 'Family Tree' },
@@ -75,6 +76,16 @@ export default function Sidebar() {
             <span className="material-symbols-outlined text-xl">help</span>
             <span>Support</span>
           </a>
+          <button
+            onClick={() => {
+              logout();
+              navigate('/');
+            }}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm font-medium text-[#ba1a1a] hover:bg-[#ffdad6] text-left w-full"
+          >
+            <span className="material-symbols-outlined text-xl">logout</span>
+            <span>Logout</span>
+          </button>
         </div>
 
         {/* New Analysis Button */}
